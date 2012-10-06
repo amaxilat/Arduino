@@ -23,26 +23,18 @@
 
 package processing.app;
 
-import processing.app.debug.AvrdudeUploader;
+import org.apache.commons.net.tftp.TFTP;
+import processing.app.debug.*;
 import processing.app.debug.Compiler;
-import processing.app.debug.RunnerException;
-import processing.app.debug.Sizer;
-import processing.app.debug.Uploader;
-import processing.app.preproc.*;
-import processing.core.*;
-import static processing.app.I18n._;
+import processing.app.preproc.PdePreprocessor;
+import processing.core.PApplet;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.beans.*;
+import javax.swing.JOptionPane;
+import java.awt.FileDialog;
 import java.io.*;
 import java.util.*;
-import java.util.List;
-import java.util.zip.*;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.TitledBorder;
+import static processing.app.I18n._;
 
 
 /**
@@ -98,7 +90,7 @@ public class Sketch {
    */
   private String libraryPath;
   /**
-   * List of library folders. 
+   * List of library folders.
    */
   private ArrayList<File> importedLibraries;
 
@@ -406,7 +398,7 @@ public class Sketch {
         return;
       }
     }
-    
+
     // In Arduino, don't allow a .cpp file with the same name as the sketch,
     // because the sketch is concatenated into a file with that name as part
     // of the build process.  
@@ -415,7 +407,7 @@ public class Sketch {
                        _("You can't have a .cpp file with the same name as the sketch."));
       return;
     }
-    
+
     if (renamingCode && currentIndex == 0) {
       for (int i = 1; i < codeCount; i++) {
         if (sanitaryName.equalsIgnoreCase(code[i].getPrettyName()) &&
@@ -735,7 +727,7 @@ public class Sketch {
           return name.toLowerCase().endsWith(".pde");
         }
       });
-      
+
       if (pdeFiles != null && pdeFiles.length > 0) {
         if (Preferences.get("editor.update_extension") == null) {
           Object[] options = { _("OK"), _("Cancel") };
@@ -753,12 +745,12 @@ public class Sketch {
                                                     null,
                                                     options,
                                                     options[0]);
-          
+
           if (result != JOptionPane.OK_OPTION) return false; // save cancelled
-          
+
           Preferences.setBoolean("editor.update_extension", true);
         }
-        
+
         if (Preferences.getBoolean("editor.update_extension")) {
           // Do rename of all .pde files to new .ino extension
           for (File pdeFile : pdeFiles)
@@ -768,14 +760,14 @@ public class Sketch {
     }
 
     for (int i = 0; i < codeCount; i++) {
-      if (code[i].isModified()) 
+      if (code[i].isModified())
         code[i].save();
     }
     calcModified();
     return true;
   }
 
-  
+
   protected boolean renameCodeToInoExtension(File pdeFile) {
     for (SketchCode c : code) {
       if (!c.getFile().equals(pdeFile))
@@ -787,7 +779,7 @@ public class Sketch {
     }
     return false;
   }
-  
+
 
   /**
    * Handles 'Save As' for a sketch.
@@ -1216,13 +1208,13 @@ public class Sketch {
       // need to be recompiled, or if the board does not
       // use setting build.dependency
       //Base.removeDir(tempBuildFolder);
-      
+
       // note that we can't remove the builddir itself, otherwise
       // the next time we start up, internal runs using Runner won't
       // work because the build dir won't exist at startup, so the classloader
       // will ignore the fact that that dir is in the CLASSPATH in run.sh
       Base.removeDescendants(tempBuildFolder);
-      
+
       deleteFilesOnNextBuild = false;
     } else {
       // delete only stale source files, from the previously
@@ -1240,7 +1232,7 @@ public class Sketch {
         }
       }
     }
-    
+
     // Create a fresh applet folder (needed before preproc is run below)
     //tempBuildFolder.mkdirs();
   }
@@ -1282,8 +1274,8 @@ public class Sketch {
   private static boolean deleteFilesOnNextBuild = true;
 
   /**
-   * When running from the editor, take care of preparations before running 
-   * the build. 
+   * When running from the editor, take care of preparations before running
+   * the build.
    */
   public void prepare() {
     // make sure the user didn't hide the sketch folder
@@ -1482,7 +1474,7 @@ public class Sketch {
     return importedLibraries;
   }
 
-  
+
   /**
    * Map an error from a set of processed .java files back to its location
    * in the actual sketch.
@@ -1531,7 +1523,7 @@ public class Sketch {
 //    }
 //    return null;
 //  }
-  
+
 
   /**
    * Map an error from a set of processed .java files back to its location
@@ -1542,8 +1534,8 @@ public class Sketch {
    * @return A RunnerException to be sent to the editor, or null if it wasn't
    *         possible to place the exception to the sketch code.
    */
-  public RunnerException placeException(String message, 
-                                        String dotJavaFilename, 
+  public RunnerException placeException(String message,
+                                        String dotJavaFilename,
                                         int dotJavaLine) {
      // Placing errors is simple, because we inserted #line directives
      // into the preprocessed source.  The compiler gives us correct
@@ -1579,7 +1571,7 @@ public class Sketch {
    */
   public String build(String buildPath, boolean verbose)
     throws RunnerException {
-    
+
     // run the preprocessor
     editor.status.progressUpdate(20);
     String primaryClassName = preprocess(buildPath);
@@ -1593,10 +1585,14 @@ public class Sketch {
     }
     return null;
   }
-  
-  
+
+
   protected boolean exportApplet(boolean usingProgrammer) throws Exception {
     return exportApplet(tempBuildFolder.getAbsolutePath(), usingProgrammer);
+  }
+
+  protected boolean exportTftp(boolean usingProgrammer) throws Exception {
+    return exportTftp(tempBuildFolder.getAbsolutePath(), usingProgrammer);
   }
 
 
@@ -1607,7 +1603,7 @@ public class Sketch {
     throws RunnerException, IOException, SerialException {
 
     prepare();
-      
+
     // build the sketch
     editor.status.progressNotice(_("Compiling sketch..."));
     String foundName = build(appletPath, false);
@@ -1629,12 +1625,38 @@ public class Sketch {
     return true;
   }
 
-  
+  /**
+   * Handle exportTftp call
+   * @param appletPath
+   * @param usingProgrammer
+   * @return
+   * @throws RunnerException
+   * @throws IOException
+   * @throws SerialException
+   */
+  public boolean exportTftp(String appletPath, boolean usingProgrammer)
+          throws RunnerException, IOException, SerialException {
+
+    prepare();
+
+    // build the sketch
+    editor.status.progressNotice(_("Compiling sketch..."));
+    String foundName = build(appletPath, false);
+    // (already reported) error during export, exit this function
+    if (foundName == null) return false;
+    TFTP tftp = new TFTP();
+
+    editor.status.progressNotice(_("Uploading..."));
+//    upload(appletPath, foundName, usingProgrammer);
+    editor.status.progressUpdate(100);
+    return true;
+  }
+
   public void setCompilingProgress(int percent) {
     editor.status.progressUpdate(percent);
   }
 
-  
+
   protected void size(String buildPath, String suggestedClassName)
     throws RunnerException {
     long size = 0;
@@ -1731,9 +1753,9 @@ public class Sketch {
     return false;
   }
 
-  
+
   /**
-   * Export to application via GUI. 
+   * Export to application via GUI.
    */
   protected boolean exportApplication() throws IOException, RunnerException {
     return false;
@@ -1867,7 +1889,7 @@ public class Sketch {
   public List<String> getHiddenExtensions() {
     return hiddenExtensions;
   }
-  
+
   /**
    * Returns a String[] array of proper extensions.
    */
