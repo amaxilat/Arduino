@@ -2812,6 +2812,10 @@ public class Editor extends JFrame implements RunnerListener {
     }
   }
 
+  public String getLastUsedIP() {
+    return lastUsedIP;
+  }
+
   /**
    * Handles pressing the TFTP Upload Button.
    *
@@ -2823,9 +2827,9 @@ public class Editor extends JFrame implements RunnerListener {
     //clear console of old errors
     console.clear();
     //Ask user for the IP of the Arduino
-    String message="Enter Arduino IP or url : ";
-    if (lastUsedIP!=null){
-      message+="(blank for " + lastUsedIP + ")";
+    String message = "Enter Arduino IP or url : ";
+    if (lastUsedIP != null) {
+      message += "(blank for " + lastUsedIP + ")";
     }
     String str = JOptionPane.showInputDialog(null, message, "TFTP Upload", 1);
     if (str.isEmpty()) {
@@ -2861,6 +2865,7 @@ public class Editor extends JFrame implements RunnerListener {
         if (success) {
           statusNotice(_("Uploaded to " + lastUsedIP));
         } else {
+          statusNotice(_("Upload Failed"));
           // error message will already be visible
         }
       } catch (Exception e) {
