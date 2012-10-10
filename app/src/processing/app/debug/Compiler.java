@@ -686,7 +686,7 @@ public class Compiler implements MessageConsumer {
     process = Runtime.getRuntime().exec(command);
     process.waitFor();
     System.out.println("executed@" + new Date());
-    Thread.sleep(2000);
+//    Thread.sleep(2000);
 
   }
 }
