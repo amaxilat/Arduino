@@ -682,11 +682,8 @@ public class Compiler implements MessageConsumer {
 
     String command = "avr-objcopy -I ihex " + fileName + ".hex -O binary " + fileName + ".bin";
     Process process;
-    System.out.println(command + "@" + new Date());
     process = Runtime.getRuntime().exec(command);
     process.waitFor();
-    System.out.println("executed@" + new Date());
-//    Thread.sleep(2000);
 
   }
 }

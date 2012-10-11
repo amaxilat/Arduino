@@ -41,10 +41,10 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.SocketException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1677,18 +1677,37 @@ public class Sketch {
 
     // build the sketch
     editor.status.progressNotice(_("Compiling sketch..."));
+    System.out.println(_("Compiling sketch..."));
     String foundName = build(appletPath, false);
-    // (already reported) error during export, exit this function
+      // (already reported) error during export, exit this function
     if (foundName == null) return false;
+    editor.status.progressUpdate(20);
 
-    URL resetURL = new URL("http://"+editor.getLastUsedIP()+":"+editor.getTftpPort()+"/"+"reset_server_random_path"+"/reprogram");
+    try{
+      editor.status.progressNotice(_("Remote Reset..."));
+      System.out.println(_("Reseting..."));
+      URL resetURL = new URL("http://"+Preferences.get("tftp.domain")
+              +":"+Preferences.get("tftp.port")
+              +"/"+Preferences.get("tftp.secretPass")
+              +"/reprogram");
       HttpURLConnection con = (HttpURLConnection) resetURL.openConnection();
       con.connect();
-      System.out.println("Arduino Response : "+con.getResponseCode());
+      if (con.getResponseCode()!=200){
+        editor.status.error("Arduino response: "+con.getResponseCode());
+        return false;
+      }
+    }
+    catch (ConnectException ce){
+      editor.status.error("Arduino did not respond to auto-reset");
+      return false;
+    }
+    System.out.println("Done!");
+    editor.status.progressUpdate(40);
 
     Thread.sleep(4000);
 
     editor.status.progressNotice(_("Uploading..."));
+    System.out.println(_("Uploading..."));
 
     final TFTPClient tftp = new TFTPClient();
     try {
@@ -1697,42 +1716,37 @@ public class Sketch {
       e.printStackTrace();
       return false;
     }
-    System.out.println("Compiled @ " + appletPath);
+    editor.status.progressUpdate(50);
     String fileName = appletPath + File.separator + foundName;
     Compiler compiler = new Compiler();
     compiler.convertToBin(fileName);
-           System.out.println(fileName+".bin");
     File f = new File(fileName+".bin");
     byte[] bytes = new byte[0];
     try {
       bytes = Files.toByteArray(f);
     } catch (IOException e) {
-      System.out.println("FilesException");
-      e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        editor.status.error(_("Could not read compiler output!"));
     }
 
     final ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
 
     tftp.setDefaultTimeout(TFTP.DEFAULT_TIMEOUT);
-    System.out.println("sending..");
 
+    editor.status.progressUpdate(60);
     try {
-      System.out.println(tftp.isOpen());
+      editor.status.progressNotice(_("Uploading to "+Preferences.get("tftp.domain")));
       tftp.setSoTimeout(5000);
-      System.out.println(editor.getLastUsedIP());
-      tftp.sendFile("file", TFTP.OCTET_MODE, bis, editor.getLastUsedIP());
+      tftp.sendFile("file", TFTP.OCTET_MODE, bis, Preferences.get("tftp.domain"));
     } catch (UnknownHostException e) {
-      System.out.println(e.getMessage());
-      System.out.println("UnknownHostException ");
+      editor.status.error("Unknown Host "+Preferences.get("tftp.domain"));
       e.printStackTrace();
       return false;
     } catch (IOException e) {
-      System.out.println(e.getMessage());
-      System.out.println("IOException ");
+      editor.status.error("IOException ");
       e.printStackTrace();
       return false;
     } finally {
-      System.out.println("Uploaded...");
+      System.out.println("Uploaded!");
       tftp.close();
     }
 //    upload(appletPath, foundName, usingProgrammer);

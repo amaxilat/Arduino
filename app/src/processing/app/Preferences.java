@@ -23,15 +23,31 @@
 
 package processing.app;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.io.*;
-import java.util.*;
+import processing.app.syntax.SyntaxStyle;
+import processing.core.PApplet;
+import processing.core.PConstants;
 
 import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.Hashtable;
+import java.util.Map;
+import java.util.StringTokenizer;
 
-import processing.app.syntax.*;
-import processing.core.*;
 import static processing.app.I18n._;
 
 
@@ -194,9 +210,11 @@ public class Preferences {
   JCheckBox updateExtensionBox;
   JCheckBox autoAssociateBox;
   JComboBox comboLanguage;
+  JTextField domainPortField;
+  JTextField tftpPassField;
 
 
-  // the calling editor, so updates can be applied
+    // the calling editor, so updates can be applied
 
   Editor editor;
 
@@ -422,9 +440,32 @@ public class Preferences {
     d = updateExtensionBox.getPreferredSize();
     updateExtensionBox.setBounds(left, top, d.width + 10, d.height);
     right = Math.max(right, left + d.width);
-    top += d.height + GUI_BETWEEN;    
+    top += d.height + GUI_BETWEEN;
 
-    // [ ] Automatically associate .pde files with Processing
+    domainPortField= new JTextField();
+    domainPortField.setColumns(30);
+    Box domainBox = Box.createHorizontalBox();
+    domainBox.add(new JLabel("Tftp upload Domain:"));
+    domainBox.add(domainPortField);
+    pain.add(domainBox);
+    d = domainBox.getPreferredSize();
+    domainBox.setBounds(left, top, d.width, d.height);
+    top += d.height + GUI_BETWEEN;
+
+
+    tftpPassField = new JTextField();
+    tftpPassField.setColumns(30);
+    Box tftpBox = Box.createHorizontalBox();
+    tftpBox.add(new JLabel("Tftp Secret Password:"));
+    tftpBox.add(tftpPassField);
+    pain.add(tftpBox);
+    d = tftpBox.getPreferredSize();
+      tftpBox.setBounds(left, top, d.width, d.height);
+    top += d.height + GUI_BETWEEN;
+
+
+
+      // [ ] Automatically associate .pde files with Processing
 
     if (Base.isWindows()) {
       autoAssociateBox =
@@ -629,7 +670,16 @@ public class Preferences {
     int pos = (Arrays.asList(languages)).indexOf(newItem.toString());  // position in the languages array
     set("editor.languages.current",(Arrays.asList(languagesISO)).get(pos));        
 
-    editor.applyPreferences();
+    set("tftp.secretPass",tftpPassField.getText());
+    if (domainPortField.getText().contains(":")){
+        set("tftp.domain",domainPortField.getText().split(":")[0]);
+        set("tftp.port",domainPortField.getText().split(":")[1]);
+    }else{
+      set("tftp.domain",domainPortField.getText());
+      set("tftp.port","80");
+    }
+
+      editor.applyPreferences();
   }
 
 
@@ -662,6 +712,9 @@ public class Preferences {
     
     updateExtensionBox.setSelected(get("editor.update_extension") == null ||
                                    getBoolean("editor.update_extension"));
+
+    domainPortField.setText(get("tftp.domain")+":"+get("tftp.port"));
+    tftpPassField.setText(get("tftp.secretPass"));
 
     dialog.setVisible(true);
   }

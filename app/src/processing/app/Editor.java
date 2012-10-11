@@ -158,8 +158,6 @@ public class Editor extends JFrame implements RunnerListener {
   Runnable exportAppHandler;
   Runnable tftpAppHandler;
 
-  private String lastUsedIP;
-  private int tftpPort;
 
     public Editor(Base ibase, String path, int[] location) {
     super("Arduino");
@@ -321,11 +319,6 @@ public class Editor extends JFrame implements RunnerListener {
     // All set, now show the window
     //setVisible(true);
   }
-
-    public int getTftpPort() {
-        return tftpPort;
-    }
-
 
     /**
    * Handles files dragged & dropped from the desktop and into the editor
@@ -2817,10 +2810,6 @@ public class Editor extends JFrame implements RunnerListener {
     }
   }
 
-  public String getLastUsedIP() {
-    return lastUsedIP;
-  }
-
   /**
    * Handles pressing the TFTP Upload Button.
    *
@@ -2831,32 +2820,15 @@ public class Editor extends JFrame implements RunnerListener {
     toolbar.activate(EditorToolbar.TFTP);
     //clear console of old errors
     console.clear();
-    //Ask user for the IP of the Arduino
-    String message = "Enter Arduino IP or url : ";
-    if (lastUsedIP != null) {
-      message += "(blank for " + lastUsedIP + ")";
-    }
-    String str = JOptionPane.showInputDialog(null, message, "TFTP Upload", 1);
-    if (str.isEmpty()) {
-      if ((lastUsedIP == null) || (lastUsedIP.isEmpty())) {
-        statusNotice(_("No valid ip or url available"));
-        toolbar.deactivate(EditorToolbar.TFTP);
-        return;
-      }
-      status.progress(_("No IP or url given using last values"));
-    } else {
-      //save the given ip to the editor
-        if (str.contains(":")){
-            this.lastUsedIP = str.split(":")[0];
-            this.tftpPort=Integer.parseInt(str.split(":")[1]);
-        }   else{
-            this.lastUsedIP = str;
-            this.tftpPort=80;
-        }
-    }
 
+    if ("".equals(Preferences.get("tftp.domain")))  {
+      status.unprogress();
+      status.error(_("Please set the TFTP preferences under File -> Preferences."));
+      return;
+    }
     //can upload
-    status.progress(_("Uploading to Board " + lastUsedIP + " using TFTP..."));
+    status.progress(_("Uploading to Board " + Preferences.get("tftp.domain")+":"+Preferences.get("tftp.port")+ " using TFTP..."));
+    System.out.println(_("Uploading to Board " + Preferences.get("tftp.domain")+":"+Preferences.get("tftp.port")+ " using TFTP..."));
     //run the operation
     new Thread(tftpAppHandler).start();
   }
@@ -2874,9 +2846,8 @@ public class Editor extends JFrame implements RunnerListener {
       try {
         boolean success = sketch.exportTftp(false);
         if (success) {
-          statusNotice(_("Uploaded to " + lastUsedIP+tftpPort));
+          statusNotice(_("Uploaded Successfully to " + Preferences.get("tftp.domain")));
         } else {
-          statusNotice(_("Upload Failed"));
           // error message will already be visible
         }
       } catch (Exception e) {
