@@ -159,8 +159,9 @@ public class Editor extends JFrame implements RunnerListener {
   Runnable tftpAppHandler;
 
   private String lastUsedIP;
+  private int tftpPort;
 
-  public Editor(Base ibase, String path, int[] location) {
+    public Editor(Base ibase, String path, int[] location) {
     super("Arduino");
     this.base = ibase;
 
@@ -321,8 +322,12 @@ public class Editor extends JFrame implements RunnerListener {
     //setVisible(true);
   }
 
+    public int getTftpPort() {
+        return tftpPort;
+    }
 
-  /**
+
+    /**
    * Handles files dragged & dropped from the desktop and into the editor
    * window. Dragging files into the editor window is the same as using
    * "Sketch &rarr; Add File" for each file.
@@ -2841,7 +2846,13 @@ public class Editor extends JFrame implements RunnerListener {
       status.progress(_("No IP or url given using last values"));
     } else {
       //save the given ip to the editor
-      this.lastUsedIP = str;
+        if (str.contains(":")){
+            this.lastUsedIP = str.split(":")[0];
+            this.tftpPort=Integer.parseInt(str.split(":")[1]);
+        }   else{
+            this.lastUsedIP = str;
+            this.tftpPort=80;
+        }
     }
 
     //can upload
@@ -2863,7 +2874,7 @@ public class Editor extends JFrame implements RunnerListener {
       try {
         boolean success = sketch.exportTftp(false);
         if (success) {
-          statusNotice(_("Uploaded to " + lastUsedIP));
+          statusNotice(_("Uploaded to " + lastUsedIP+tftpPort));
         } else {
           statusNotice(_("Upload Failed"));
           // error message will already be visible

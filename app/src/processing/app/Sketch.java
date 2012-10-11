@@ -26,17 +26,29 @@ package processing.app;
 import com.google.common.io.Files;
 import org.apache.commons.net.tftp.TFTP;
 import org.apache.commons.net.tftp.TFTPClient;
-import processing.app.debug.*;
+import processing.app.debug.AvrdudeUploader;
 import processing.app.debug.Compiler;
+import processing.app.debug.RunnerException;
+import processing.app.debug.Sizer;
+import processing.app.debug.Uploader;
 import processing.app.preproc.PdePreprocessor;
 import processing.core.PApplet;
 
-import javax.swing.JOptionPane;
-import java.awt.FileDialog;
-import java.io.*;
+import javax.swing.*;
+import java.awt.*;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.net.SocketException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.net.UnknownHostException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static processing.app.I18n._;
 
@@ -1668,6 +1680,13 @@ public class Sketch {
     String foundName = build(appletPath, false);
     // (already reported) error during export, exit this function
     if (foundName == null) return false;
+
+    URL resetURL = new URL("http://"+editor.getLastUsedIP()+":"+editor.getTftpPort()+"/"+"reset_server_random_path"+"/reprogram");
+      HttpURLConnection con = (HttpURLConnection) resetURL.openConnection();
+      con.connect();
+      System.out.println("Arduino Response : "+con.getResponseCode());
+
+    Thread.sleep(4000);
 
     editor.status.progressNotice(_("Uploading..."));
 
