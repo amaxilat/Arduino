@@ -119,7 +119,7 @@ public class Preferences {
                                                                 "한국어" + " (" + _("Korean") + ")",
                         "Latviešu" + " (" + _("Latvian") + ")",
                         "Lietuvių Kalba" + " (" + _("Lithuaninan") + ")",
-                                                 "मराठी" + " (" + _("Marathi") + ")",                        
+                                                 "मराठी" + " (" + _("Marathi") + ")",
                         "Norsk" + " (" + _("Norwegian") + ")",
                         "فارسی" + " (" + _("Persian") + ")",
                         "Język Polski" + " (" + _("Polish") + ")",
@@ -163,7 +163,7 @@ public class Preferences {
                         "ru",
                         "es",
                         "ta"};
-  
+
   /**
    * Standardized width for buttons. Mac OS X 10.3 wants 70 as its default,
    * Windows XP needs 66, and my Ubuntu machine needs 80+, so 80 seems proper.
@@ -211,6 +211,7 @@ public class Preferences {
   JCheckBox autoAssociateBox;
   JComboBox comboLanguage;
   JTextField domainPortField;
+  JTextField autoResetPortField;
   JTextField tftpPassField;
 
 
@@ -293,7 +294,7 @@ public class Preferences {
 			 ), ex);
         }
       }
-    }    
+    }
   }
 
 
@@ -373,7 +374,7 @@ public class Preferences {
     box.setBounds(left, top, d.width, d.height);
     right = Math.max(right, left + d.width);
     top += d.height + GUI_BETWEEN;
-    
+
     // Editor font size [    ]
 
     box = Box.createHorizontalBox();
@@ -392,7 +393,7 @@ public class Preferences {
 
 
     // Show verbose output during: [ ] compilation [ ] upload
-    
+
     box = Box.createHorizontalBox();
     label = new JLabel(_("Show verbose output during: "));
     box.add(label);
@@ -406,14 +407,14 @@ public class Preferences {
     top += d.height + GUI_BETWEEN;
 
     // [ ] Verify code after upload
-    
+
     verifyUploadBox = new JCheckBox(_("Verify code after upload"));
     pain.add(verifyUploadBox);
     d = verifyUploadBox.getPreferredSize();
     verifyUploadBox.setBounds(left, top, d.width + 10, d.height);
     right = Math.max(right, left + d.width);
     top += d.height + GUI_BETWEEN;
-    
+
     // [ ] Use external editor
 
     externalEditorBox = new JCheckBox(_("Use external editor"));
@@ -432,9 +433,9 @@ public class Preferences {
     checkUpdatesBox.setBounds(left, top, d.width + 10, d.height);
     right = Math.max(right, left + d.width);
     top += d.height + GUI_BETWEEN;
-    
+
     // [ ] Update sketch files to new extension on save (.pde -> .ino)
-    
+
     updateExtensionBox = new JCheckBox(_("Update sketch files to new extension on save (.pde -> .ino)"));
     pain.add(updateExtensionBox);
     d = updateExtensionBox.getPreferredSize();
@@ -450,6 +451,16 @@ public class Preferences {
     pain.add(domainBox);
     d = domainBox.getPreferredSize();
     domainBox.setBounds(left, top, d.width, d.height);
+    top += d.height + GUI_BETWEEN;
+
+    autoResetPortField= new JTextField();
+    autoResetPortField.setColumns(8);
+    Box resetBox = Box.createHorizontalBox();
+    resetBox.add(new JLabel("Auto Reset Port:"));
+    resetBox.add(autoResetPortField);
+    pain.add(resetBox);
+    d = resetBox.getPreferredSize();
+    resetBox.setBounds(left, top, d.width, d.height);
     top += d.height + GUI_BETWEEN;
 
 
@@ -493,7 +504,7 @@ public class Preferences {
         public void mousePressed(MouseEvent e) {
           Base.openFolder(Base.getSettingsFolder());
         }
-        
+
         public void mouseEntered(MouseEvent e) {
           clickable.setForeground(new Color(0, 0, 140));
         }
@@ -618,7 +629,7 @@ public class Preferences {
     setBoolean("build.verbose", verboseCompilationBox.isSelected());
     setBoolean("upload.verbose", verboseUploadBox.isSelected());
     setBoolean("upload.verify", verifyUploadBox.isSelected());
-    
+
 //    setBoolean("sketchbook.closing_last_window_quits",
 //               closingLastQuitsBox.isSelected());
     //setBoolean("sketchbook.prompt", sketchPromptBox.isSelected());
@@ -662,21 +673,34 @@ public class Preferences {
       setBoolean("platform.auto_file_type_associations",
                  autoAssociateBox.isSelected());
     }
-    
+
     setBoolean("editor.update_extension", updateExtensionBox.isSelected());
 
     // adds the selected language to the preferences file
     Object newItem = comboLanguage.getSelectedItem();
     int pos = (Arrays.asList(languages)).indexOf(newItem.toString());  // position in the languages array
-    set("editor.languages.current",(Arrays.asList(languagesISO)).get(pos));        
+    set("editor.languages.current",(Arrays.asList(languagesISO)).get(pos));
 
     set("tftp.secretPass",tftpPassField.getText());
     if (domainPortField.getText().contains(":")){
-        set("tftp.domain",domainPortField.getText().split(":")[0]);
-        set("tftp.port",domainPortField.getText().split(":")[1]);
+      set("tftp.domain",domainPortField.getText().split(":")[0]);
+      try{
+        set("tftp.port",String.valueOf(Integer.parseInt(domainPortField.getText().split(":")[1])));
+      }catch (NumberFormatException nfe){
+        set("tftp.port","69");
+      }
     }else{
       set("tftp.domain",domainPortField.getText());
-      set("tftp.port","80");
+      set("tftp.port","69");
+    }
+    if ("".equals(autoResetPortField.getText())){
+      set("tftp.autoreset","46969");
+    }else{
+      try{
+        set("tftp.autoreset",String.valueOf(Integer.parseInt(autoResetPortField.getText())));
+      }catch (NumberFormatException nfe){
+        set("tftp.autoreset","46969");
+      }
     }
 
       editor.applyPreferences();
@@ -709,12 +733,20 @@ public class Preferences {
       autoAssociateBox.
         setSelected(getBoolean("platform.auto_file_type_associations"));
     }
-    
+
     updateExtensionBox.setSelected(get("editor.update_extension") == null ||
                                    getBoolean("editor.update_extension"));
 
+    if (get("tftp.port")==null|| "".equals(get("tftp.port"))){
+      set("tftp.port","69");
+    }
     domainPortField.setText(get("tftp.domain")+":"+get("tftp.port"));
     tftpPassField.setText(get("tftp.secretPass"));
+
+    if (get("tftp.autoreset")==null|| "".equals(get("tftp.autoreset"))){
+      set("tftp.autoreset","46969");
+    }
+    autoResetPortField.setText(get("tftp.autoreset"));
 
     dialog.setVisible(true);
   }
@@ -726,8 +758,8 @@ public class Preferences {
   static protected void load(InputStream input) throws IOException {
     load(input, table);
   }
-  
-  static public void load(InputStream input, Map table) throws IOException {  
+
+  static public void load(InputStream input, Map table) throws IOException {
     String[] lines = PApplet.loadStrings(input);  // Reads as UTF-8
     for (String line : lines) {
       if ((line.length() == 0) ||
@@ -780,7 +812,7 @@ public class Preferences {
   //static public String get(String attribute) {
   //return get(attribute, null);
   //}
-  
+
   static public String get(String attribute /*, String defaultValue */) {
     return (String) table.get(attribute);
     /*

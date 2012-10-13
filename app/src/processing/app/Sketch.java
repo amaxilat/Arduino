@@ -1683,28 +1683,31 @@ public class Sketch {
     if (foundName == null) return false;
     editor.status.progressUpdate(20);
 
-    try{
-      editor.status.progressNotice(_("Remote Reset..."));
-      System.out.println(_("Reseting..."));
-      URL resetURL = new URL("http://"+Preferences.get("tftp.domain")
-              +":"+Preferences.get("tftp.port")
-              +"/"+Preferences.get("tftp.secretPass")
-              +"/reprogram");
-      HttpURLConnection con = (HttpURLConnection) resetURL.openConnection();
-      con.connect();
-      if (con.getResponseCode()!=200){
-        editor.status.error("Arduino response: "+con.getResponseCode());
+    if (!Preferences.get("tftp.secretPass").equals("")){
+      try{
+        editor.status.progressNotice(_("Remote Reset..."));
+        System.out.println(_("Reseting..."));
+        URL resetURL = new URL("http://"+Preferences.get("tftp.domain")
+                +":"+Preferences.get("tftp.autoreset")
+                +"/"+Preferences.get("tftp.secretPass")
+                +"/reset");
+        HttpURLConnection con = (HttpURLConnection) resetURL.openConnection();
+        con.connect();
+        if (con.getResponseCode()!=200){
+          editor.status.error("Arduino response: "+con.getResponseCode());
+          return false;
+        }
+      }
+      catch (ConnectException ce){
+        editor.status.error("Arduino did not respond to auto-reset");
         return false;
       }
-    }
-    catch (ConnectException ce){
-      editor.status.error("Arduino did not respond to auto-reset");
-      return false;
-    }
-    System.out.println("Done!");
-    editor.status.progressUpdate(40);
+      System.out.println("Done!");
+      editor.status.progressUpdate(40);
 
-    Thread.sleep(4000);
+      //needed to wait for the auto reset
+      Thread.sleep(4000);
+    }
 
     editor.status.progressNotice(_("Uploading..."));
     System.out.println(_("Uploading..."));
@@ -1736,7 +1739,7 @@ public class Sketch {
     try {
       editor.status.progressNotice(_("Uploading to "+Preferences.get("tftp.domain")));
       tftp.setSoTimeout(5000);
-      tftp.sendFile("file", TFTP.OCTET_MODE, bis, Preferences.get("tftp.domain"));
+      tftp.sendFile("file", TFTP.OCTET_MODE, bis, Preferences.get("tftp.domain"), Integer.parseInt(Preferences.get("tftp.port")));
     } catch (UnknownHostException e) {
       editor.status.error("Unknown Host "+Preferences.get("tftp.domain"));
       e.printStackTrace();
