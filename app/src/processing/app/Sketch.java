@@ -1690,7 +1690,7 @@ public class Sketch {
         URL resetURL = new URL("http://"+Preferences.get("tftp.domain")
                 +":"+Preferences.get("tftp.autoreset")
                 +"/"+Preferences.get("tftp.secretPass")
-                +"/reset");
+                +"/reprogram");
         HttpURLConnection con = (HttpURLConnection) resetURL.openConnection();
         con.connect();
         if (con.getResponseCode()!=200){
